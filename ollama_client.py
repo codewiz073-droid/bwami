@@ -1,11 +1,9 @@
 import requests
-import json
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 MODEL = "phi"
 
 def ollama_response(prompt):
-    """Try Ollama first, fallback to placeholder if not enough RAM"""
     payload = {
         "model": MODEL,
         "prompt": prompt,
@@ -13,15 +11,29 @@ def ollama_response(prompt):
     }
 
     try:
-        r = requests.post(OLLAMA_URL, json=payload, timeout=120)
-        response = r.json().get("response", "No response from Ollama")
-        if response:
-            return response
+        r = requests.post(
+            OLLAMA_URL,
+            json=payload,
+            timeout=120
+        )
+        r.raise_for_status()
+
+        data = r.json()
+        return data.get("response", "").strip() or "No response from Ollama"
+
     except requests.exceptions.ConnectionError:
-        pass
+        return "[Ollama not running] Please start `ollama serve`."
+
+    except requests.exceptions.ReadTimeout:
+        return "[Ollama timeout] Model is loading. Try again in a moment."
+
+    except ValueError:
+        return "[Ollama error] Invalid JSON response."
+
     except Exception as e:
-        if "requires more system memory" in str(e):
-            return "⚠️ Ollama needs more RAM. Please close unnecessary applications and restart, or upgrade your system RAM to 8GB+."
-    
-    # Fallback placeholder response
-    return f"[Ollama not available] Your question: {prompt[:100]}... (Waiting for Ollama to load. Please restart if it's been more than 2 minutes.)"
+        if "requires more system memory" in str(e).lower():
+            return (
+                "⚠️ Ollama needs more RAM.\n"
+                "Close heavy apps or upgrade to 8GB+ RAM."
+            )
+        return f"[Ollama error] {e}"
