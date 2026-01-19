@@ -2,7 +2,7 @@ name: littlefox-ai
 services:
 - name: littlefox-ai
   github:
-    repo: YOUR_GITHUB_USERNAME/YOUR_REPO_NAME
+    repo: wamukekhestephen-lang/littlefoxAI
     branch: main
     deploy_on_push: true
   build:
@@ -13,8 +13,6 @@ services:
     value: production
   - key: FLASK_DEBUG
     value: "0"
-  - key: PORT
-    value: "8080"
   http_port: 8080
   health_check:
     http_path: /
