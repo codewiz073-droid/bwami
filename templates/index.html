@@ -18,6 +18,39 @@
 <body>
   <div class="app">
 
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal" hidden>
+      <div class="auth-container">
+        <div class="auth-form" id="loginForm">
+          <h2>Welcome Back</h2>
+          <input type="text" id="loginUsername" placeholder="Username" class="auth-input" />
+          <input type="password" id="loginPassword" placeholder="Password" class="auth-input" />
+          <button id="loginBtn" class="auth-btn">Login</button>
+          <p class="auth-switch">Don't have an account? <a href="#" id="switchToSignup">Sign up</a></p>
+        </div>
+
+        <div class="auth-form hidden" id="signupForm">
+          <h2>Create Account</h2>
+          <input type="text" id="signupUsername" placeholder="Username" class="auth-input" />
+          <input type="email" id="signupEmail" placeholder="Email" class="auth-input" />
+          <input type="password" id="signupPassword" placeholder="Password" class="auth-input" />
+          <button id="signupBtn" class="auth-btn">Sign Up</button>
+          <p class="auth-switch">Already have an account? <a href="#" id="switchToLogin">Login</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- User menu (top right) -->
+    <div class="user-menu-container">
+      <button id="userMenuBtn" class="user-menu-btn" title="User menu">👤</button>
+      <div id="userMenu" class="user-menu" hidden>
+        <div id="userInfo" class="user-info">Guest (Limited)</div>
+        <button id="settingsBtn" class="menu-item" style="display:none;">⚙️ Preferences</button>
+        <button id="signInBtn" class="menu-item" style="display:none;">Sign In</button>
+        <button id="logoutBtn" class="menu-item">Logout</button>
+      </div>
+    </div>
+
     <!-- Sidebar toggle button -->
     <button id="sidebarToggle" class="sidebar-toggle" aria-controls="appSidebar" aria-expanded="true" aria-label="Toggle navigation">☰</button>
 
@@ -85,13 +118,14 @@
       <!-- Input -->
       <footer class="chat-input-container" aria-label="Chat input">
         <div class="input-container">
-         <input
-        type="text"
+          <textarea
         id="chatInput"
         class="chat-input"
         placeholder="+ Ask anything"
         autocomplete="off"
-     />
+        rows="1"
+        style="resize: none; overflow: hidden;"
+     ></textarea>
   <!-- Buttons INSIDE input -->
   <div class="input-icons">
     <button class="icon-btn" type="button" title="Voice">🎤</button>
@@ -113,8 +147,93 @@
     </main>
   </div>
 
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="settings-modal" hidden>
+    <div class="settings-container">
+      <div class="settings-header">
+        <h2>⚙️ Preferences</h2>
+        <button class="close-btn" id="closeSettingsBtn">✕</button>
+      </div>
+
+      <div class="settings-content">
+        <!-- Response Format Section -->
+        <div class="settings-section">
+          <h3>Response Format</h3>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="useListsToggle" checked> Use Lists
+            </label>
+            <small>Break responses into clear list items</small>
+          </div>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="useNumberedToggle" checked> Use Numbered Lists
+            </label>
+            <small>Number sequential items (1, 2, 3...)</small>
+          </div>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="useBulletsToggle" checked> Use Bullet Points
+            </label>
+            <small>Use • for non-sequential items</small>
+          </div>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="useEmojisToggle" checked> Use Emojis
+            </label>
+            <small>Add visual indicators with emojis</small>
+          </div>
+        </div>
+
+        <!-- Tone Section -->
+        <div class="settings-section">
+          <h3>Communication Style</h3>
+          <div class="setting-item">
+            <label for="toneSelect">Preferred Tone:</label>
+            <select id="toneSelect">
+              <option value="professional">Professional</option>
+              <option value="casual">Casual</option>
+              <option value="technical">Technical</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label for="languageSelect">Language:</label>
+            <select id="languageSelect">
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Learning Section -->
+        <div class="settings-section">
+          <h3>Learning</h3>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="learningModeToggle" checked> Learning Mode
+            </label>
+            <small>System learns your preferences and specializations</small>
+          </div>
+          <div class="setting-item">
+            <label for="specializationInput">Your Specializations:</label>
+            <input type="text" id="specializationInput" placeholder="e.g., Python, Web Development, Data Science (comma separated)" class="settings-input">
+            <small>Help the system tailor responses to your expertise</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-footer">
+        <button id="resetSettingsBtn" class="secondary-btn">Reset to Defaults</button>
+        <button id="saveSettingsBtn" class="primary-btn">Save Preferences</button>
+      </div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='script.js') }}"></script>
-  <!-- Sidebar behaviour: merge into your script.js or include after it -->
-  <script src="{{ url_for('static', filename='sidebar.js') }}"></script>
+  <!-- Authentication handler -->
+  <script src="{{ url_for('static', filename='auth.js') }}"></script>
 </body>
 </html>

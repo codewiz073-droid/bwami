@@ -3,12 +3,38 @@
 ## Overview
 This project follows a **separation of concerns** principle where all instructions and behavioral guidelines are separated from the executable code.
 
+## Core Capabilities & Architecture
+
+### Intelligence Stack
+The system is built on four core capabilities:
+
+1. **Language Model Foundation**
+   - Large language model with comprehensive knowledge
+   - Advanced reasoning and context understanding
+   - Multi-language and multi-domain support
+
+2. **Information Synthesis**
+   - Intelligent combination of multiple information sources
+   - Smart extraction and contextualization
+   - Direct addressing of user needs
+
+3. **Real-Time Data Access**
+   - Live web search integration
+   - Current information retrieval
+   - External verification capabilities
+
+4. **Visual & Multimodal Support**
+   - Image analysis and visual search
+   - Object identification
+   - Cross-modal reasoning
+
 ## File Organization
 
 ### System Prompt
 - **File**: `system_prompt.txt`
 - **Purpose**: Contains all instructions, guidelines, and behavioral rules for the AI assistant
-- **Content**: 
+- **Content**:
+  - Core capabilities (language model, information synthesis, real-time data access, visual search)
   - 5 intelligence layers (intent detection, reasoning, formatting, domain-specific rules, validation)
   - Response quality checklist
   - Request classification guide
@@ -16,7 +42,7 @@ This project follows a **separation of concerns** principle where all instructio
   - Math solving guidelines
   - Code generation guidelines
   - Domain-specific instructions
-  - Capabilities and supported technologies
+  - Supported technologies
 
 ### Core Application Files
 - **main.py**: Loads `system_prompt.txt` and uses it when making API calls

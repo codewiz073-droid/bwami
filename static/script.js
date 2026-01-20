@@ -132,7 +132,18 @@
   ====================== */
   async function loadChats() {
     try {
-      const res = await fetch("/chats");
+      // For guest users, only show message
+      if (!window.__auth?.isFullAccess?.()) {
+        if (!chatList) return;
+        chatList.innerHTML = '<div class="empty-history">Sign in to view history</div>';
+        return;
+      }
+      
+      const headers = {};
+      const token = window.__auth?.getCurrentToken?.();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      
+      const res = await fetch("/chats", { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const chats = await res.json();
 
@@ -186,7 +197,14 @@
   async function deleteChat(id, title) {
     if (!confirm(`Delete chat "${title}"?`)) return;
     try {
-      const res = await fetch(`/delete/${id}`, { method: "DELETE" });
+      const headers = {};
+      const token = window.__auth?.getCurrentToken?.();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      
+      const res = await fetch(`/delete/${id}`, { 
+        method: "DELETE",
+        headers
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await loadChats();
       if (currentChat === id) createNewChat();
@@ -211,7 +229,11 @@
       currentChat = id;
       if (chatBox) chatBox.innerHTML = "";
 
-      const res = await fetch(`/history/${id}`);
+      const headers = {};
+      const token = window.__auth?.getCurrentToken?.();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      
+      const res = await fetch(`/history/${id}`, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const messages = await res.json();
       messages.forEach(([role, text]) => addMessage(role, text));
@@ -224,6 +246,13 @@
      Navigation / actions
   ====================== */
   function handleNavAction(action) {
+    // Check if feature requires account
+    const requiresAccount = ["images", "apps", "projects"].includes(action);
+    if (requiresAccount && !window.__auth?.isFullAccess?.()) {
+      window.requireAuth("sidebar");
+      return;
+    }
+    
     switch (action) {
       case "new-chat": createNewChat(); break;
       case "search": toggleSearchChats(); break;
@@ -339,6 +368,9 @@
     modeBtn.addEventListener("click", toggleMode);
   }
 
+  let detectiveStatus = { online: true }; // Tracks auto-detected connectivity
+  let autoModeEnabled = true; // Auto mode can be disabled by manual toggle
+
   async function loadMode() {
     if (!modeBtn) return;
     try {
@@ -352,9 +384,34 @@
     }
   }
 
+  async function checkConnectivity() {
+    try {
+      const res = await fetch("/status/connectivity");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      detectiveStatus.online = data.online || true;
+      if (autoModeEnabled) {
+        currentMode = detectiveStatus.online ? "online" : "offline";
+      }
+      updateModeButton();
+    } catch (err) {
+      console.error("Failed to check connectivity:", err);
+      detectiveStatus.online = false; // Assume offline on error
+    }
+  }
+
   async function toggleMode() {
     if (!modeBtn) return;
-    currentMode = (currentMode === "online") ? "offline" : "online";
+    autoModeEnabled = !autoModeEnabled; // Toggle auto-detection
+    
+    if (autoModeEnabled) {
+      // Re-enable auto-detection
+      await checkConnectivity(); // Apply auto-detected status
+    } else {
+      // Manual mode: toggle between online/offline
+      currentMode = (currentMode === "online") ? "offline" : "online";
+    }
+    
     try {
       const res = await fetch("/mode", {
         method: "POST",
@@ -369,17 +426,41 @@
 
   function updateModeButton() {
     if (!modeBtn) return;
-    if (currentMode === "online") {
-      modeBtn.textContent = "🔵 Online";
-      modeBtn.classList.remove("offline");
-      modeBtn.classList.add("online");
-      modeBtn.setAttribute("aria-pressed", "false");
+    let displayText = "";
+    let displayClass = "";
+    
+    if (autoModeEnabled) {
+      // Show detected status with automatic indicator
+      if (detectiveStatus.online) {
+        displayText = "🌐 Online (Auto)";
+        displayClass = "online";
+      } else {
+        displayText = "📡 Offline (Auto)";
+        displayClass = "offline";
+      }
+      modeBtn.title = "Click to toggle manual mode. Currently auto-detecting connectivity.";
     } else {
-      modeBtn.textContent = "🔴 Offline";
-      modeBtn.classList.remove("online");
-      modeBtn.classList.add("offline");
-      modeBtn.setAttribute("aria-pressed", "true");
+      // Show manual mode
+      if (currentMode === "online") {
+        displayText = "🌐 Online (Manual)";
+        displayClass = "online";
+      } else {
+        displayText = "📡 Offline (Manual)";
+        displayClass = "offline";
+      }
+      modeBtn.title = "Click to switch back to automatic detection.";
     }
+    
+    modeBtn.textContent = displayText;
+    modeBtn.classList.remove("offline", "online");
+    modeBtn.classList.add(displayClass);
+    modeBtn.setAttribute("aria-pressed", displayClass === "offline" ? "true" : "false");
+  }
+
+  // Start periodic connectivity checks (every 15 seconds)
+  function startConnectivityMonitoring() {
+    checkConnectivity(); // Initial check
+    setInterval(checkConnectivity, 15000); // Check every 15 seconds
   }
 
   /* =====================
@@ -392,11 +473,18 @@
       e.stopPropagation();
       if (!confirm("Are you sure you want to delete all chats? This cannot be undone.")) return;
       try {
-        const res = await fetch("/chats");
+        const headers = {};
+        const token = window.__auth?.getCurrentToken?.();
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        
+        const res = await fetch("/chats", { headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const chats = await res.json();
         for (const [id] of chats) {
-          await fetch(`/delete/${id}`, { method: "DELETE" });
+          await fetch(`/delete/${id}`, { 
+            method: "DELETE",
+            headers
+          });
         }
         await loadChats();
         createNewChat();
@@ -464,9 +552,13 @@
     if (thinkingIndicator) thinkingIndicator.classList.add("show");
 
     try {
+      const headers = { "Content-Type": "application/json" };
+      const token = window.__auth?.getCurrentToken?.();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      
       const response = await fetch("/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ message: text, chat_id: currentChat })
       });
 
@@ -556,6 +648,99 @@
     if (open) closeSidebar(); else openSidebar();
   }
 
+  function setupSettingsModal() {
+    const settingsBtn = document.getElementById("settingsBtn");
+    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+    const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const resetSettingsBtn = document.getElementById("resetSettingsBtn");
+    const settingsModal = document.getElementById("settingsModal");
+    const userMenuBtn = document.getElementById("userMenuBtn");
+
+    if (!settingsBtn || !settingsModal) return;
+
+    // Load preferences when settings button is clicked
+    settingsBtn.addEventListener("click", async () => {
+      // Hide user menu first
+      const userMenu = document.getElementById("userMenu");
+      if (userMenu) userMenu.setAttribute("hidden", "");
+
+      // Load current preferences
+      const prefs = await window.__auth.loadPreferences();
+      if (prefs) {
+        document.getElementById("useListsToggle").checked = prefs.use_lists !== false;
+        document.getElementById("useNumberedToggle").checked = prefs.use_numbered !== false;
+        document.getElementById("useBulletsToggle").checked = prefs.use_bullets !== false;
+        document.getElementById("useEmojisToggle").checked = prefs.use_emojis !== false;
+        document.getElementById("toneSelect").value = prefs.preferred_tone || "professional";
+        document.getElementById("languageSelect").value = prefs.preferred_language || "en";
+        document.getElementById("learningModeToggle").checked = prefs.learning_mode !== false;
+        
+        const specs = prefs.specializations || {};
+        const specList = Array.isArray(specs) ? specs.join(", ") : Object.keys(specs).join(", ");
+        document.getElementById("specializationInput").value = specList;
+      }
+
+      // Show modal
+      settingsModal.removeAttribute("hidden");
+    });
+
+    // Close modal
+    if (closeSettingsBtn) {
+      closeSettingsBtn.addEventListener("click", () => {
+        settingsModal.setAttribute("hidden", "");
+      });
+    }
+
+    // Close modal on outside click
+    settingsModal.addEventListener("click", (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.setAttribute("hidden", "");
+      }
+    });
+
+    // Save preferences
+    if (saveSettingsBtn) {
+      saveSettingsBtn.addEventListener("click", async () => {
+        const specs = document.getElementById("specializationInput").value
+          .split(",")
+          .map(s => s.trim())
+          .filter(s => s);
+
+        const preferences = {
+          use_lists: document.getElementById("useListsToggle").checked,
+          use_numbered: document.getElementById("useNumberedToggle").checked,
+          use_bullets: document.getElementById("useBulletsToggle").checked,
+          use_emojis: document.getElementById("useEmojisToggle").checked,
+          preferred_tone: document.getElementById("toneSelect").value,
+          preferred_language: document.getElementById("languageSelect").value,
+          learning_mode: document.getElementById("learningModeToggle").checked,
+          specializations: specs
+        };
+
+        const success = await window.__auth.savePreferences(preferences);
+        if (success) {
+          settingsModal.setAttribute("hidden", "");
+        }
+      });
+    }
+
+    // Reset to defaults
+    if (resetSettingsBtn) {
+      resetSettingsBtn.addEventListener("click", () => {
+        if (confirm("Reset all preferences to defaults?")) {
+          document.getElementById("useListsToggle").checked = true;
+          document.getElementById("useNumberedToggle").checked = true;
+          document.getElementById("useBulletsToggle").checked = true;
+          document.getElementById("useEmojisToggle").checked = true;
+          document.getElementById("toneSelect").value = "professional";
+          document.getElementById("languageSelect").value = "en";
+          document.getElementById("learningModeToggle").checked = true;
+          document.getElementById("specializationInput").value = "";
+        }
+      });
+    }
+  }
+
   function setupSidebarToggle() {
     if (!toggleBtn || !overlay || !sidebar) return;
 
@@ -623,10 +808,18 @@
     setupQuickButtons();
     setupInputIcons();
     setupSidebarToggle();
+    setupSettingsModal();
 
     // Send / Enter handling (single binding)
     if (sendBtn) sendBtn.addEventListener("click", sendMessage);
     if (inputEl) {
+      // Auto-expand textarea as user types
+      inputEl.addEventListener("input", () => {
+        inputEl.style.height = "auto";
+        const newHeight = Math.min(inputEl.scrollHeight, 150);
+        inputEl.style.height = newHeight + "px";
+      });
+      
       inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
@@ -639,6 +832,7 @@
     // Load initial data
     loadChats();
     loadMode();
+    startConnectivityMonitoring(); // Start auto-detecting connectivity
   });
 
   /* =====================

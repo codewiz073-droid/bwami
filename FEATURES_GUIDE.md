@@ -1,8 +1,44 @@
-# AI Assistant - Enhanced Features Guide
+# AI Assistant - Core Capabilities & Features Guide
 
-## New Capabilities
+## Core Capabilities
 
-Your AI Assistant now has two powerful new features:
+### Foundation Intelligence
+
+Your AI Assistant is built on four core capabilities:
+
+#### 1. **Language Model Foundation** 🧠
+- Large language model trained on comprehensive knowledge
+- Broad understanding of language, facts, and logic
+- Advanced context comprehension and reasoning
+- Coherent, contextually relevant response generation
+- Multi-language and multi-domain support
+
+#### 2. **Information Synthesis** 🔄
+- Primary function: synthesize and combine information intelligently
+- Extract relevant details from multiple sources
+- Create comprehensive answers that directly address your needs
+- Analyze and integrate information rather than copying
+- Contextualize information within your specific question
+
+#### 3. **Real-Time Data Access** 🌐
+- Integration with search tools for up-to-date information
+- Access to current facts and recent developments
+- External verification of claims and statistics
+- Retrieve information beyond training data cutoff
+- Dynamic responses based on live web data
+
+#### 4. **Visual Search & Multimodal Support** 🖼️
+- Visual search capabilities for image-based queries
+- Object identification and classification
+- Find similar items and gather visual context
+- Multimodal analysis combining text and images
+- Visual problem-solving and technical analysis
+
+---
+
+## Enhanced Features
+
+Your AI Assistant also has two powerful enhanced features:
 
 ### 1. **Mathematics Problem Solver** 🧮
 
