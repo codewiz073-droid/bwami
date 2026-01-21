@@ -86,31 +86,32 @@
      UI: Add message
   ====================== */
   function addMessage(role, text, stream = false) {
-    if (!chatBox) return null;
-    const msg = document.createElement("div");
-    msg.className = `message ${role}`;
+  if (!chatBox) return null;
 
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
+  const msg = document.createElement("div");
+  msg.className = `message ${role}`;
 
-    if (role === "assistant") {
-      bubble.innerHTML = markdownToHtml(text);
-    } else {
-      bubble.innerText = text;
-    }
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
 
-    if (stream) bubble.id = "streaming";
-
-    msg.appendChild(bubble);
-    chatBox.appendChild(msg);
-
-    chatBox.classList.add("active");
-    if (emptyState) emptyState.style.display = "none";
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    return bubble;
+  if (role === "assistant") {
+    bubble.innerHTML = markdownToHtml(text || "");
+  } else {
+    bubble.innerText = text;
   }
 
+  // ✅ use class instead of duplicate ID
+  if (stream) bubble.classList.add("streaming");
+
+  msg.appendChild(bubble);
+  chatBox.appendChild(msg);
+
+  chatBox.classList.add("active");
+  if (emptyState) emptyState.style.display = "none";
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  return bubble;
+}
   /* =====================
      Welcome card for empty state
   ====================== */
@@ -498,123 +499,61 @@
      Send message (and search)
   ====================== */
   async function sendMessage() {
-    if (!inputEl) return;
-    const text = inputEl.value.trim();
+  if (!inputEl) return;
+  const text = inputEl.value.trim();
+  if (!text) return;
 
-    // Search mode
-    if (searchActive) {
+  if (!currentChat) currentChat = safeUUID();
+  inputEl.value = "";
+  if (emptyState) emptyState.style.display = "none";
+
+  addMessage("user", text);
+  const assistantBubble = addMessage("assistant", "", true);
+
+  if (thinkingIndicator) thinkingIndicator.classList.add("show");
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    const token = window.__auth?.getCurrentToken?.();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch("/ask", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ message: text, chat_id: currentChat })
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+
+    if (thinkingIndicator) thinkingIndicator.classList.remove("show");
+
+    if (data.text) {
+      assistantBubble.innerHTML = markdownToHtml(data.text);
+
       try {
-        const res = await fetch("/chats");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const chats = await res.json();
-        if (!chatList) return;
-        chatList.innerHTML = "";
-        const filtered = chats.filter(([_, title]) => title.toLowerCase().includes(text.toLowerCase()));
-        if (filtered.length === 0) {
-          chatList.innerHTML = '<div class="empty-history">No matching chats</div>';
-          return;
-        }
-        filtered.forEach(([id, title]) => {
-          const item = document.createElement("div");
-          item.className = "chat-item";
-          const displayTitle = title.length > 40 ? title.substring(0, 40) + "..." : title;
-          const textSpan = document.createElement("span");
-          textSpan.className = "chat-item-text";
-          textSpan.innerText = displayTitle;
-          textSpan.title = title;
-          textSpan.addEventListener("click", () => loadChat(id));
-          const deleteBtn = document.createElement("button");
-          deleteBtn.className = "chat-item-delete";
-          deleteBtn.innerText = "✕";
-          deleteBtn.title = "Delete chat";
-          deleteBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            deleteChat(id, title);
+        if (window.hljs) {
+          assistantBubble.querySelectorAll("pre code").forEach(block => {
+            hljs.highlightElement(block);
           });
-          item.appendChild(textSpan);
-          item.appendChild(deleteBtn);
-          chatList.appendChild(item);
-        });
-      } catch (err) {
-        console.error("Search failed:", err);
-      }
-      return;
-    }
-
-    if (!text) return;
-    if (!currentChat) currentChat = safeUUID();
-    inputEl.value = "";
-    if (emptyState) emptyState.style.display = "none";
-
-    addMessage("user", text);
-    const assistantBubble = addMessage("assistant", "", true);
-
-    if (thinkingIndicator) thinkingIndicator.classList.add("show");
-
-    try {
-      const headers = { "Content-Type": "application/json" };
-      const token = window.__auth?.getCurrentToken?.();
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      
-      const response = await fetch("/ask", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ message: text, chat_id: currentChat })
-      });
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          if (line.startsWith("data: ")) {
-            const data = line.substring(6);
-            try {
-              const event = JSON.parse(data);
-              if (event.type === "text") {
-                fullText += event.text;
-                assistantBubble.innerHTML = markdownToHtml(fullText);
-                // syntax highlight if available
-                try {
-                  if (window.hljs) {
-                    assistantBubble.querySelectorAll("pre code").forEach(block => {
-                      hljs.highlightElement(block);
-                    });
-                  }
-                } catch (_) {}
-                chatBox.scrollTop = chatBox.scrollHeight;
-              } else if (event.type === "status") {
-                console.log("Status:", event.text);
-              } else if (event.type === "done") {
-                // optionally handle done
-              }
-            } catch (err) {
-              console.error("Stream parse error:", err);
-            }
-          }
         }
-        buffer = lines[lines.length - 1];
-      }
+      } catch (_) {}
 
-      if (thinkingIndicator) thinkingIndicator.classList.remove("show");
-      assistantBubble.removeAttribute("id");
-      await loadChats();
-    } catch (err) {
-      console.error("Error sending message:", err);
-      assistantBubble.innerHTML = "<strong>Sorry, an error occurred. Please try again.</strong>";
-      if (thinkingIndicator) thinkingIndicator.classList.remove("show");
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } else {
+      assistantBubble.innerHTML = "<strong>⚠️ Empty response</strong>";
     }
+
+    assistantBubble.removeAttribute("id");
+    await loadChats();
+
+  } catch (err) {
+    console.error("Error sending message:", err);
+    assistantBubble.innerHTML = "<strong>❌ Error occurred. Try again.</strong>";
+    if (thinkingIndicator) thinkingIndicator.classList.remove("show");
   }
+}
 
   /* =====================
      Sidebar behavior

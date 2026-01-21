@@ -286,7 +286,7 @@ async def ask(req: Request):
                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return StreamingResponse(empty_gen(), media_type="text/event-stream")
 
-        user_id = "debug-user"
+        user_id = 0
         save_message(chat_id, user_id, "user", user_input)
         logger.info(f"[ASK] Input: {user_input}")
 
