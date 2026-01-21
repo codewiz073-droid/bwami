@@ -2,7 +2,7 @@ name: littlefox-ai
 services:
 - name: littlefox-ai
   github:
-    repo: wamukekhestephen-lang/littlefoxAI
+    repo: codewiz073-droid/bwami
     branch: main
     deploy_on_push: true
   build:
